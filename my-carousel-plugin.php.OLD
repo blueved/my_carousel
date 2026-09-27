@@ -1,0 +1,30 @@
+<?php
+/**
+ * Plugin Name: My React Plugin
+ * Description: A test plugin that renders a React app saying Hello World.
+ * Version: 1.0.0
+ * Author: You
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // No direct access
+}
+
+function mrp_enqueue_assets() {
+    $asset_file = include plugin_dir_path( __FILE__ ) . 'build/index.asset.php';
+
+    wp_enqueue_script(
+        'my_carousel_plugin',
+        plugins_url( 'build/index.js', __FILE__ ),
+        $asset_file['dependencies'],
+        $asset_file['version'],
+        true
+    );
+}
+add_action( 'wp_enqueue_scripts', 'mrp_enqueue_assets' );
+
+// Shortcode to place the React root div anywhere via [my_react_app]
+function mrp_render_shortcode() {
+    return '<div id="mrp-root"></div>';
+}
+add_shortcode( 'my_carousel_plugin', 'mrp_render_shortcode' );
