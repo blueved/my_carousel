@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const AUTOPLAY_INTERVAL = 4000;
+const AUTOPLAY_INTERVAL = 8000;
 
 const PrevIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -106,7 +106,6 @@ function EventCarousel({ what, restUrl }) {
         </div>
       <div style={styles.imageWrap}>
         <img src={active.url} alt={active.caption} style={styles.image} />
-
         <div style={styles.controls}>
           <button
             style={btnStyle('prev')}
@@ -178,14 +177,28 @@ const styles = {
     border: '2px solid purple',
   },
   image: {    
-    maxHeight: '65vh',
-    display: 'flex',
+    maxHeight: '100%',
+    maxWidth: '100%',
+
     borderRadius: '8px',
     boxShadow: 'none',
     border: 'none',  
+
+  },
+  controls: {
+    position: 'absolute',
+    top: '1px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    // alignItems: 'center',
+    // justifyContent:'center',
     
-    alignItems: 'center',
-    justifyContent:'center',
+    gap: '5px',
+    background: 'rgba(0,0,0,0.3)',
+    padding: '2px 0px',
+    borderRadius: '999px',
+    zIndex: 3,
   },
   captionBar: {
     position: 'relative',   
@@ -212,19 +225,6 @@ const styles = {
     padding: '0px 10px',
     opacity: 0.85,
     fontStyle:'italic',
-  },
-  controls: {
-    position: 'absolute',
-    top: '25px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    background: 'rgba(0,0,0,0.3)',
-    padding: '6px 0px',
-    borderRadius: '999px',
-    zIndex: 3,
   },
   btn: {
     all: 'unset', // strip every inherited/theme button style
