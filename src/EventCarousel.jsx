@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 const AUTOPLAY_INTERVAL = 8000;
+const NARROW_QUERY = '(max-width: 704px)'; // narrower than 705px
 
 const PrevIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -27,13 +28,32 @@ const PlayIcon = () => (
   </svg>
 );
 
+// Inline styles can't use @media, so we track the query in JS instead.
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setMatches(e.matches);
+
+    setMatches(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+
+  return matches;
+}
+
 function EventCarousel({ what, restUrl }) {
+  const isNarrow = useMediaQuery(NARROW_QUERY); // must stay above any early return
   const [images, setImages] = useState([]);
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [hoverBtn, setHoverBtn] = useState(null); // tracks which button is hovered, for hover styling
+  const [hoverBtn, setHoverBtn] = useState(null); // tracks which button is hovered
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -92,7 +112,7 @@ function EventCarousel({ what, restUrl }) {
 
   const active = images[current];
 
-  // Helper to merge base button style with hover state
+  // Merge base button style with hover state
   const btnStyle = (name) => ({
     ...styles.btn,
     background: hoverBtn === name ? 'rgba(255,255,255,0.2)' : 'transparent',
@@ -100,10 +120,27 @@ function EventCarousel({ what, restUrl }) {
 
   return (
     <div style={styles.carousel}>
-      <div style={styles.captionBar}>
-          <span >{active.caption} </span>
-          <span style={styles.captionCount}>({current + 1}/{images.length})</span>
-        </div>
+      {/* Fixed-height caption box: same size on every slide */}
+      <div
+        style={{
+          ...styles.captionBar,
+          height: isNarrow ? '80px' : '53px',
+        }}
+      >
+        <span
+          style={{
+            ...styles.captionText,
+            WebkitLineClamp: isNarrow ? 3 : 2,
+          }}
+        >
+          {active.caption}
+        </span>
+        <span style={styles.captionCount}>
+          ({current + 1}/{images.length})
+        </span>
+      </div>
+
+      {/* Image area fills all remaining height; image sits on its bottom edge */}
       <div style={styles.imageWrap}>
         <img src={active.url} alt={active.caption} style={styles.image} />
         <div style={styles.controls}>
@@ -136,22 +173,22 @@ function EventCarousel({ what, restUrl }) {
           </button>
         </div>
       </div>
-    {false &&
-      <div style={styles.dots}>
-        {images.map((_, i) => (
-          <span
-            key={i}
-            style={styles.dot(i === current)}
-            onClick={() => {
-              setIsPlaying(false);
-              setCurrent(i);
-            }}
-          />
-        ))}
-      </div>
-    }
+
+      {false && (
+        <div style={styles.dots}>
+          {images.map((_, i) => (
+            <span
+              key={i}
+              style={styles.dot(i === current)}
+              onClick={() => {
+                setIsPlaying(false);
+                setCurrent(i);
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
-    
   );
 }
 
@@ -164,26 +201,55 @@ const styles = {
     textAlign: 'center',
     fontFamily: 'sans-serif',
     boxSizing: 'border-box',
-    height: '70vh',
-    maxHeight: '70vh',    
+    height: '70vh', // one fixed total height
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  captionBar: {
+    flex: '0 0 auto', // never grows or shrinks
+    boxSizing: 'border-box',
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    textAlign: 'left',
+    padding: '0 10px',
+    color: '#102030',
+    fontSize: '1rem',
+    lineHeight: '1.3',
+    overflow: 'hidden',
+    // height is set in the component (53px wide, 80px narrow)
+  },
+  captionText: {
+    flex: '1 1 auto',
+    minWidth: 0,
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    // WebkitLineClamp is set in the component (2 wide, 3 narrow)
+    overflow: 'hidden',
+    marginRight: '12px',
+  },
+  captionCount: {
+    flex: '0 0 auto', // always visible, never clipped
+    whiteSpace: 'nowrap',
+    opacity: 0.85,
+    fontStyle: 'italic',
   },
   imageWrap: {
+    flex: '1 1 0', // takes all remaining height
+    minHeight: 0, // lets the flex item shrink below its content size
     position: 'relative',
     lineHeight: 0,
     display: 'flex',
-    alignItems: 'center',
-    justifyContent:'center',
-    height:'70vh',    
-    // border: '2px solid purple',
+    alignItems: 'flex-end', // image sits on the bottom edge
+    justifyContent: 'center',
   },
-  image: {    
+  image: {
     maxHeight: '100%',
     maxWidth: '100%',
-
     borderRadius: '8px',
     boxShadow: 'none',
-    border: 'none',  
-
+    border: 'none',
   },
   controls: {
     position: 'absolute',
@@ -191,39 +257,11 @@ const styles = {
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
-    // alignItems: 'center',
-    // justifyContent:'center',    
     gap: '5px',
-    background: 'rgba(0,0,0,0.3)',
+    background: 'rgba(0,0,0,0.5)',
     padding: '2px 0px',
     borderRadius: '999px',
-    zIndex: 0,
-  },
-  captionBar: {
-    position: 'relative',   
-    width: '100%',
-    justifyContent: 'space-between',
-    alignItems: 'right',
-    textAlign: 'left',
-    paddingLeft: '10px',
-    //background: 'linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0.1))',
-    color: '#102030',
-    fontSize: '1rem',
-    zIndex: 0,
-    borderRadius: '8px 8px 0 0',
-    boxSizing: 'border-box',
-  },
-  captionText: {
-    textAlign: 'left',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    marginRight: '12px',
-  },
-  captionCount: {
-    padding: '0px 10px',
-    opacity: 0.85,
-    fontStyle:'italic',
+    zIndex: 1,
   },
   btn: {
     all: 'unset', // strip every inherited/theme button style
@@ -252,6 +290,5 @@ const styles = {
     cursor: 'pointer',
   }),
 };
-
 
 export default EventCarousel;
