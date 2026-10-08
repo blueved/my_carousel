@@ -47,14 +47,21 @@ function useMediaQuery(query) {
 }
 
 function EventCarousel({ what, restUrl }) {
-  const isNarrow = useMediaQuery(NARROW_QUERY); // must stay above any early return
+  // All hooks must stay above the early returns below.
+  const isNarrow = useMediaQuery(NARROW_QUERY);
   const [images, setImages] = useState([]);
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [hoverBtn, setHoverBtn] = useState(null); // tracks which button is hovered
+  const [captionOpen, setCaptionOpen] = useState(false);
   const timerRef = useRef(null);
+
+  // Close the caption overlay whenever the slide changes
+  useEffect(() => {
+    setCaptionOpen(false);
+  }, [current]);
 
   useEffect(() => {
     setLoading(true);
@@ -128,9 +135,12 @@ function EventCarousel({ what, restUrl }) {
         }}
       >
         <span
+          title={active.caption} // tooltip on hover (desktop)
+          onClick={() => setCaptionOpen((o) => !o)} // full text on click (touch too)
           style={{
             ...styles.captionText,
             WebkitLineClamp: isNarrow ? 3 : 2,
+            cursor: 'pointer',
           }}
         >
           {active.caption}
@@ -143,6 +153,16 @@ function EventCarousel({ what, restUrl }) {
       {/* Image area fills all remaining height; image sits on its bottom edge */}
       <div style={styles.imageWrap}>
         <img src={active.url} alt={active.caption} style={styles.image} />
+
+        {captionOpen && (
+          <div
+            style={styles.captionOverlay}
+            onClick={() => setCaptionOpen(false)}
+          >
+            {active.caption}
+          </div>
+        )}
+
         <div style={styles.controls}>
           <button
             style={btnStyle('prev')}
@@ -235,6 +255,23 @@ const styles = {
     opacity: 0.85,
     fontStyle: 'italic',
   },
+  captionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: '10px 12px',
+    background: 'rgba(0,0,0,0.75)',
+    color: '#fff',
+    fontSize: '1rem',
+    lineHeight: '1.3',
+    textAlign: 'left',
+    borderRadius: '8px 8px 0 0',
+    maxHeight: '80%',
+    overflowY: 'auto',
+    zIndex: 2, // above the image; controls stay at zIndex 1 at the bottom
+    cursor: 'pointer',
+  },
   imageWrap: {
     flex: '1 1 0', // takes all remaining height
     minHeight: 0, // lets the flex item shrink below its content size
@@ -250,15 +287,17 @@ const styles = {
     borderRadius: '8px',
     boxShadow: 'none',
     border: 'none',
+    position: 'absolute',
+    top:'0'
   },
   controls: {
     position: 'absolute',
-    bottom: '5px',
+    top: '1px',
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
     gap: '5px',
-    background: 'rgba(0,0,0,0.5)',
+    background: 'rgba(0,0,0,0.3)',
     padding: '2px 0px',
     borderRadius: '999px',
     zIndex: 1,
