@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const AUTOPLAY_INTERVAL = 8000;
 const NARROW_QUERY = '(max-width: 704px)'; // narrower than 705px
+const TEST_IMAGE_DELAY = 0; // ms; TEST ONLY. Set to e.g. 9000 to simulate slow loading, 0 to disable
 
 const PrevIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -25,6 +26,35 @@ const PauseIcon = () => (
 const PlayIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
     <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+// Spinner: SVG with a built-in SMIL animation, so no CSS @keyframes needed
+const Spinner = ({ size = 48 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 50 50"
+    role="status"
+    aria-label="Loading"
+  >
+    <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="5" />
+    <path
+      d="M25 5 a20 20 0 0 1 20 20"
+      fill="none"
+      stroke="#102030"
+      strokeWidth="5"
+      strokeLinecap="round"
+    >
+      <animateTransform
+        attributeName="transform"
+        type="rotate"
+        from="0 25 25"
+        to="360 25 25"
+        dur="0.9s"
+        repeatCount="indefinite"
+      />
+    </path>
   </svg>
 );
 
@@ -56,13 +86,19 @@ function EventCarousel({ what, restUrl }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [hoverBtn, setHoverBtn] = useState(null); // tracks which button is hovered
   const [captionOpen, setCaptionOpen] = useState(false);
+  const [loadedUrl, setLoadedUrl] = useState(null); // URL of the last image that finished loading
+  const [readyUrl, setReadyUrl] = useState(null); // TEST ONLY: URL allowed to start loading
   const timerRef = useRef(null);
+
+  // True while the current image is still downloading
+  const imgLoading = images.length > 0 && loadedUrl !== images[current]?.url;
 
   // Close the caption overlay whenever the slide changes
   useEffect(() => {
     setCaptionOpen(false);
   }, [current]);
 
+  // Fetch the image list
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -83,6 +119,28 @@ function EventCarousel({ what, restUrl }) {
       });
   }, [what, restUrl]);
 
+  // Preload the next image in the background so slide changes feel instant
+  useEffect(() => {
+    if (TEST_IMAGE_DELAY) return; // skip preload while testing the spinner
+    if (images.length < 2) return;
+    const nextImg = new Image();
+    nextImg.src = images[(current + 1) % images.length].url;
+  }, [current, images]);
+
+  // TEST ONLY: artificially delay each image so the spinner stays visible
+  useEffect(() => {
+    if (!images.length) return;
+    const url = images[current].url;
+
+    if (!TEST_IMAGE_DELAY) {
+      setReadyUrl(url);
+      return;
+    }
+
+    const t = setTimeout(() => setReadyUrl(url), TEST_IMAGE_DELAY);
+    return () => clearTimeout(t);
+  }, [current, images]);
+
   const prev = useCallback(() => {
     setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
   }, [images.length]);
@@ -91,15 +149,17 @@ function EventCarousel({ what, restUrl }) {
     setCurrent((c) => (c === images.length - 1 ? 0 : c + 1));
   }, [images.length]);
 
+  // Autoplay: the countdown only runs while the current image is fully loaded,
+  // and restarts with a fresh full interval for every image.
   useEffect(() => {
-    if (!isPlaying || images.length <= 1) return;
+    if (!isPlaying || images.length <= 1 || imgLoading) return;
 
-    timerRef.current = setInterval(() => {
+    timerRef.current = setTimeout(() => {
       setCurrent((c) => (c === images.length - 1 ? 0 : c + 1));
     }, AUTOPLAY_INTERVAL);
 
-    return () => clearInterval(timerRef.current);
-  }, [isPlaying, images.length]);
+    return () => clearTimeout(timerRef.current);
+  }, [isPlaying, images.length, imgLoading, current]);
 
   const handlePrev = () => {
     setIsPlaying(false);
@@ -113,7 +173,13 @@ function EventCarousel({ what, restUrl }) {
 
   const togglePlay = () => setIsPlaying((p) => !p);
 
-  if (loading) return <p>Loading carousel...</p>;
+  if (loading) {
+    return (
+      <div style={styles.loadingBox}>
+        <Spinner />
+      </div>
+    );
+  }
   if (error) return <p>Error: {error}</p>;
   if (!images.length) return <p>No images found for this event.</p>;
 
@@ -152,7 +218,24 @@ function EventCarousel({ what, restUrl }) {
 
       {/* Image area fills all remaining height; image sits on its bottom edge */}
       <div style={styles.imageWrap}>
-        <img src={active.url} alt={active.caption} style={styles.image} />
+        {imgLoading && (
+          <div style={styles.spinnerWrap}>
+            <Spinner />
+          </div>
+        )}
+
+        <img
+          key={active.url}
+          src={readyUrl === active.url ? active.url : undefined}
+          alt={active.caption}
+          onLoad={() => setLoadedUrl(active.url)}
+          onError={() => setLoadedUrl(active.url)} // don't spin forever on a broken image
+          style={{
+            ...styles.image,
+            opacity: imgLoading ? 0 : 1,
+            transition: 'opacity 0.25s ease',
+          }}
+        />
 
         {captionOpen && (
           <div
@@ -225,6 +308,12 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   },
+  loadingBox: {
+    height: '70vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   captionBar: {
     flex: '0 0 auto', // never grows or shrinks
     boxSizing: 'border-box',
@@ -281,18 +370,27 @@ const styles = {
     alignItems: 'flex-end', // image sits on the bottom edge
     justifyContent: 'center',
   },
+  spinnerWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none', // the controls stay clickable while loading
+  },
   image: {
     maxHeight: '100%',
     maxWidth: '100%',
     borderRadius: '8px',
     boxShadow: 'none',
     border: 'none',
-    position: 'absolute',
-    top:'0'
   },
   controls: {
     position: 'absolute',
-    top: '1px',
+    bottom: '5px',
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
