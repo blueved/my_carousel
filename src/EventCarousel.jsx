@@ -11,7 +11,7 @@ const PrevIcon = () => (
 );
 
 const NextIcon = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="80" height="80" fill="currentColor">
     <path d="M8.5 5 16 12l-7.5 7L7 17.6l6-5.6-6-5.6z" />
   </svg>
 );
@@ -369,6 +369,7 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-end', // image sits on the bottom edge
     justifyContent: 'center',
+    border:'2px solid purple'
   },
   spinnerWrap: {
     position: 'absolute',

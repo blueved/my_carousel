@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import EventCarousel from './EventCarousel';
 
 const el = document.getElementById('my-carousel-root');
+console.log('my-carousel build:', '2026-10-08 v3');
 
 if (el) {
   const { what, restUrl } = window.myCarouselData || {};

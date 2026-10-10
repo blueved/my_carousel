@@ -16,23 +16,21 @@ if (!defined('ABSPATH')) {
 add_shortcode('my_carousel_plugin', 'my_carousel_render_shortcode');
 
 function my_carousel_render_shortcode($atts) {
-    $atts_before = $atts; // capture raw input before shortcode_atts merges defaults
-    
     $atts = shortcode_atts([
         'what' => 'deathvalley',
     ], $atts, 'my_carousel_plugin');
 
-    error_log('RAW atts before merge: ' . print_r($atts_before, true));
-    error_log('MERGED atts after shortcode_atts: ' . print_r($atts, true));
-
     $event_type = preg_replace('/[^a-zA-Z0-9\-]/', '', $atts['what']);
-    error_log('FINAL sanitized what: ' . $event_type);
+
+    // Version = file modification time, so every rebuild busts the browser cache
+    $script_path = plugin_dir_path(__FILE__) . 'build/index.js';
+    $version     = file_exists($script_path) ? filemtime($script_path) : '1.0.0';
 
     wp_enqueue_script(
         'my-carousel-app',
         plugin_dir_url(__FILE__) . 'build/index.js',
         ['wp-element'],
-        '1.0.0',
+        $version,
         true
     );
 
