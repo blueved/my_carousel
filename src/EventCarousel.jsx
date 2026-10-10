@@ -11,20 +11,20 @@ const PrevIcon = () => (
 );
 
 const NextIcon = () => (
-  <svg viewBox="0 0 24 24" width="80" height="80" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
     <path d="M8.5 5 16 12l-7.5 7L7 17.6l6-5.6-6-5.6z" />
   </svg>
 );
 
 const PauseIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
     <rect x="6" y="5" width="4" height="14" />
     <rect x="14" y="5" width="4" height="14" />
   </svg>
 );
 
 const PlayIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
     <path d="M8 5v14l11-7z" />
   </svg>
 );
@@ -367,9 +367,9 @@ const styles = {
     position: 'relative',
     lineHeight: 0,
     display: 'flex',
-    alignItems: 'flex-end', // image sits on the bottom edge
+    alignItems: 'flex-start', // image sits on the bottom edge
     justifyContent: 'center',
-    border:'2px solid purple'
+    
   },
   spinnerWrap: {
     position: 'absolute',
@@ -391,7 +391,7 @@ const styles = {
   },
   controls: {
     position: 'absolute',
-    bottom: '5px',
+    top: '1px',
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
