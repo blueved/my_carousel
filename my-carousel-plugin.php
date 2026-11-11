@@ -69,8 +69,7 @@ function my_carousel_get_images(WP_REST_Request $request) {
 
     $allowed_events = [
         'deathvalley'  => 'dv',
-        'yosemite'     => 'yos',
-        'joshuatree'   => 'jt',
+        'charlotte'    => 'ca',
         'mountwhitney' => 'mw',
     ];
 

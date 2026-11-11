@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 const AUTOPLAY_INTERVAL = 8000;
 const NARROW_QUERY = '(max-width: 704px)'; // narrower than 705px
 const TEST_IMAGE_DELAY = 0; // ms; TEST ONLY. Set to e.g. 9000 to simulate slow loading, 0 to disable
+const CAPTION_BG = '#f2f8fd'; // must match the page background behind the caption
 
 const PrevIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -89,6 +90,8 @@ function EventCarousel({ what, restUrl }) {
   const [loadedUrl, setLoadedUrl] = useState(null); // URL of the last image that finished loading
   const [readyUrl, setReadyUrl] = useState(null); // TEST ONLY: URL allowed to start loading
   const timerRef = useRef(null);
+  const captionRef = useRef(null);
+  const [isTruncated, setIsTruncated] = useState(false);
 
   // True while the current image is still downloading
   const imgLoading = images.length > 0 && loadedUrl !== images[current]?.url;
@@ -161,6 +164,21 @@ function EventCarousel({ what, restUrl }) {
     return () => clearTimeout(timerRef.current);
   }, [isPlaying, images.length, imgLoading, current]);
 
+  // Show "see more" only when the caption is actually clamped
+useEffect(() => {
+  const el = captionRef.current;
+  if (!el) {
+    setIsTruncated(false);
+    return;
+  }
+  const check = () => setIsTruncated(el.scrollHeight > el.clientHeight + 1);
+  check();
+
+  const ro = new ResizeObserver(check); // re-check on resize / rotation
+  ro.observe(el);
+  return () => ro.disconnect();
+}, [loading, current, images, isNarrow]);
+
   const handlePrev = () => {
     setIsPlaying(false);
     prev();
@@ -200,17 +218,25 @@ function EventCarousel({ what, restUrl }) {
           height: isNarrow ? '80px' : '53px',
         }}
       >
-        <span
-          title={active.caption} // tooltip on hover (desktop)
-          onClick={() => setCaptionOpen((o) => !o)} // full text on click (touch too)
-          style={{
-            ...styles.captionText,
-            WebkitLineClamp: isNarrow ? 3 : 2,
-            cursor: 'pointer',
-          }}
-        >
-          {active.caption}
-        </span>
+        <div style={styles.captionTextWrap}>
+          <span
+            ref={captionRef}
+            title={active.caption}
+            onClick={() => setCaptionOpen((o) => !o)}
+            style={{
+              ...styles.captionText,
+              WebkitLineClamp: isNarrow ? 3 : 2,
+              cursor: 'pointer',
+            }}
+          >
+            {active.caption}
+          </span>
+          {isTruncated && (
+            <span style={styles.seeMore} onClick={() => setCaptionOpen(true)}>
+              … lire la suite
+            </span>
+          )}
+        </div>
         <span style={styles.captionCount}>
           ({current + 1}/{images.length})
         </span>
@@ -427,6 +453,33 @@ const styles = {
     background: isActive ? '#333' : '#ccc',
     cursor: 'pointer',
   }),
+
+  captionTextWrap: {
+  flex: '1 1 auto',
+  minWidth: 0,
+  position: 'relative',
+  marginRight: '12px',
+},
+captionText: {
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    // WebkitLineClamp is set in the component (2 wide, 3 narrow)
+    overflow: 'hidden',
+  },
+  seeMore: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    paddingLeft: '20px',
+    // fades in from the page background so it covers the native "..."
+    background: `linear-gradient(to right, transparent, ${CAPTION_BG} 28px)`,
+    color: '#0b5fff',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    fontSize: '1rem',
+    lineHeight: '1.3',
+    fontStyle:'italic',
+  },
 };
 
 export default EventCarousel;
